@@ -120,7 +120,7 @@ def build_workbook(sheets: dict[str, pd.DataFrame]) -> bytes:
 with st.expander("How it works", expanded=False):
     st.markdown(
         """
-        - **Excel A (Baseline):** your previous roster  
+        - **Excel A (Baseline):** Previous roster  
         - **Excel B (Current):** current roster to compare  
         - Output includes:
           - **New in Excel B**
