@@ -6,6 +6,7 @@ st.set_page_config(page_title="NRIC Name Comparator", layout="wide")
 st.title("Compare Two Vendor Lists (Full Name As Per NRIC)")
 
 NAME_COL = "Full Name As Per NRIC"
+SERIAL_COL = "S/N"
 
 # ---------- Helpers ----------
 def pick_sheet(file, key_prefix: str) -> tuple[pd.DataFrame, str]:
@@ -26,6 +27,11 @@ def normalize_name(s: pd.Series) -> pd.Series:
     s = s.str.replace(r"\s+", " ", regex=True)
     s = s.str.upper()
     return s
+
+def add_serial_number(df: pd.DataFrame) -> pd.DataFrame:
+    df_out = df.reset_index(drop=True).copy()
+    df_out.insert(0, SERIAL_COL, range(1, len(df_out) + 1))
+    return df_out
 
 def to_xlsx_bytes(df_dict: dict) -> bytes:
     bio = BytesIO()
@@ -72,26 +78,29 @@ if file_a and file_b:
     a_set = set(a_norm[a_norm != ""].tolist())
     b_set = set(b_norm[b_norm != ""].tolist())
 
-    new_names = sorted(list(b_set - a_set))
-    removed_names = sorted(list(a_set - b_set))
+    new_mask_b = b_norm.isin(b_set - a_set)
+    removed_mask_a = a_norm.isin(a_set - b_set)
+
+    new_rows_b = df_b.loc[new_mask_b].copy()
+    removed_rows_a = df_a.loc[removed_mask_a].copy()
 
     # ---------- Summary ----------
     st.subheader("2) Summary")
     st.write(
         f"Rows A: {len(df_a)} | Rows B: {len(df_b)} | "
-        f"Unique A: {len(a_set)} | Unique B: {len(b_set)} | "
-        f"New in Excel B: {len(new_names)} | Removed from Excel A: {len(removed_names)}"
+        f"New in Excel B: {len(new_rows_b)} | "
+        f"Removed from Excel A: {len(removed_rows_a)}"
     )
 
-    # ---------- Results ----------
-    st.subheader("3) Results")
+    # ---------- Results (preview) ----------
+    st.subheader("3) Results (Preview)")
     c1, c2 = st.columns(2)
 
     with c1:
         st.markdown("### 🆕 New in Excel B")
-        if new_names:
+        if not new_rows_b.empty:
             st.dataframe(
-                pd.DataFrame({NAME_COL: new_names}),
+                new_rows_b[[NAME_COL]],
                 use_container_width=True
             )
         else:
@@ -99,9 +108,9 @@ if file_a and file_b:
 
     with c2:
         st.markdown("### ❌ Removed from Excel A")
-        if removed_names:
+        if not removed_rows_a.empty:
             st.dataframe(
-                pd.DataFrame({NAME_COL: removed_names}),
+                removed_rows_a[[NAME_COL]],
                 use_container_width=True
             )
         else:
@@ -109,9 +118,13 @@ if file_a and file_b:
 
     # ---------- Download ----------
     st.subheader("4) Download results")
+
+    new_rows_b_out = add_serial_number(new_rows_b)
+    removed_rows_a_out = add_serial_number(removed_rows_a)
+
     xlsx_bytes = to_xlsx_bytes({
-        "New_in_Excel_B": pd.DataFrame({NAME_COL: new_names}),
-        "Removed_from_Excel_A": pd.DataFrame({NAME_COL: removed_names}),
+        "New_in_Excel_B": new_rows_b_out,
+        "Removed_from_Excel_A": removed_rows_a_out,
     })
 
     st.download_button(
