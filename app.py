@@ -30,7 +30,13 @@ def normalize_name(s: pd.Series) -> pd.Series:
 
 def add_serial_number(df: pd.DataFrame) -> pd.DataFrame:
     df_out = df.reset_index(drop=True).copy()
-    df_out.insert(0, SERIAL_COL, range(1, len(df_out) + 1))
+
+    # If S/N already exists (or variations), drop it first
+    for col in ["S/N", "SN", "SNO", "S. NO", "S. NO.", "S NO", "S NO.", "NO", "No", "No."]:
+        if col in df_out.columns:
+            df_out = df_out.drop(columns=[col])
+
+    df_out.insert(0, "S/N", range(1, len(df_out) + 1))
     return df_out
 
 def to_xlsx_bytes(df_dict: dict) -> bytes:
