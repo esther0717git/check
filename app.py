@@ -217,7 +217,7 @@ if file_a and file_b:
     # Download
     with st.container(border=True):
         st.subheader("5) Export")
-        st.caption("Downloads an Excel file formatted to match the US Cleaner style (header, borders, freeze panes, row height, fixed widths).")
+        st.caption("Downloads an Excel file")
 
         output = build_workbook({
             "New_in_Excel_B": new_out,
