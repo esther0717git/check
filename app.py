@@ -46,7 +46,7 @@ def add_serial_number(df: pd.DataFrame) -> pd.DataFrame:
 
 def apply_us_style(ws):
     """
-    Match your US Cleaner styling:
+    Match your US Cleaner styling (Excel output):
     - Header fill green (94B455), bold Calibri 9
     - Borders thin, center alignment
     - Freeze top row
@@ -79,15 +79,16 @@ def apply_us_style(ws):
     for r in range(1, ws.max_row + 1):
         ws.row_dimensions[r].height = 20
 
-def set_column_widths(ws, df: pd.DataFrame):
+def set_column_widths(ws):
     """
-    Make S/N narrower + make other columns fit.
-    If your sheet has more columns, they will auto-fit.
+    Excel output widths:
+    - Make S/N narrow
+    - Auto-fit others with a tighter rule
     """
-    # Fixed S/N width (narrow)
+    # Narrow S/N column (A)
     ws.column_dimensions["A"].width = 3.38
 
-    # Auto-fit the rest (starting from column B)
+    # Auto-fit remaining columns
     for col_idx in range(2, ws.max_column + 1):
         col_letter = get_column_letter(col_idx)
 
@@ -96,8 +97,6 @@ def set_column_widths(ws, df: pd.DataFrame):
             if cell.value is not None:
                 max_len = max(max_len, len(str(cell.value).strip()))
 
-        # tighter sizing rule than max_len + 2
-        # (names won't explode width)
         if max_len <= 10:
             width = max_len + 2
         elif max_len <= 25:
@@ -119,7 +118,7 @@ def build_styled_workbook(sheets: dict[str, pd.DataFrame]) -> bytes:
             ws.append(row)
 
         apply_us_style(ws)
-        set_column_widths(ws, df)
+        set_column_widths(ws)
 
     buf = BytesIO()
     wb.save(buf)
@@ -156,8 +155,8 @@ if file_a and file_b:
     a_set = set(a_norm[a_norm != ""].tolist())
     b_set = set(b_norm[b_norm != ""].tolist())
 
-    new_norm_set = b_set - a_set          # in B, not in A
-    removed_norm_set = a_set - b_set      # in A, not in B
+    new_norm_set = b_set - a_set
+    removed_norm_set = a_set - b_set
 
     # Keep FULL rows
     new_rows_b = df_b.loc[b_norm.isin(new_norm_set)].copy()
@@ -174,10 +173,11 @@ if file_a and file_b:
         f"New in Excel B: {len(new_rows_b_out)} | Removed from Excel A: {len(removed_rows_a_out)}"
     )
 
-    # Preview (hide index + consistent widths)
+    # Preview (hide index + make S/N as tight as Streamlit allows)
     st.subheader("3) Results (Preview)")
+
     column_cfg = {
-        SERIAL_COL: st.column_config.NumberColumn(SERIAL_COL, width="small"),
+        SERIAL_COL: st.column_config.NumberColumn(SERIAL_COL, width="xsmall"),  # 👈 tightest
         NAME_COL: st.column_config.TextColumn(NAME_COL, width="large"),
     }
 
@@ -206,7 +206,7 @@ if file_a and file_b:
         else:
             st.info("No names removed from Excel A.")
 
-    # Download
+    # Download (styled XLSX)
     st.subheader("4) Download results")
     out_bytes = build_styled_workbook({
         "New_in_Excel_B": new_rows_b_out,
