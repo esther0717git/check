@@ -44,14 +44,14 @@ def add_serial_number(df: pd.DataFrame) -> pd.DataFrame:
     df_out.insert(0, SERIAL_COL, range(1, len(df_out) + 1))
     return df_out
 
-def style_worksheet_exact_like_us(ws):
+def apply_us_style(ws):
     """
     Match your US Cleaner styling:
     - Header fill green (94B455), bold Calibri 9
     - Borders thin, center alignment
     - Freeze top row
-    - Auto-fit columns using max string length + 2 (no caps)
     - Row height 20
+    - Column widths: fixed S/N + auto-fit others (tighter)
     """
     header_fill  = PatternFill("solid", fgColor="94B455")
     border       = Border(Side("thin"), Side("thin"), Side("thin"), Side("thin"))
@@ -59,32 +59,55 @@ def style_worksheet_exact_like_us(ws):
     normal_font  = Font(name="Calibri", size=9)
     bold_font    = Font(name="Calibri", size=9, bold=True)
 
-    # 1) Apply borders, alignment, font to all cells
+    # Apply borders/alignment/font to all cells
     for row in ws.iter_rows():
         for cell in row:
             cell.border = border
             cell.alignment = center
             cell.font = normal_font
 
-    # 2) Style header row
+    # Style header row
     for col in range(1, ws.max_column + 1):
         h = ws[f"{get_column_letter(col)}1"]
         h.fill = header_fill
         h.font = bold_font
 
-    # 3) Freeze top row
+    # Freeze header
     ws.freeze_panes = "A2"
 
-    # 4) Auto-fit columns & set row height (EXACT same logic as your US Cleaner)
-    for col in ws.columns:
-        values = [len(str(cell.value)) for cell in col if cell.value is not None]
-        width = max(values) if values else 10
-        ws.column_dimensions[get_column_letter(col[0].column)].width = width + 2
+    # Row height = 20
+    for r in range(1, ws.max_row + 1):
+        ws.row_dimensions[r].height = 20
 
-    for row in ws.iter_rows():
-        ws.row_dimensions[row[0].row].height = 20
+def set_column_widths(ws, df: pd.DataFrame):
+    """
+    Make S/N narrower + make other columns fit.
+    If your sheet has more columns, they will auto-fit.
+    """
+    # Fixed S/N width (narrow)
+    ws.column_dimensions["A"].width = 3.38
 
-def build_styled_workbook_exact_like_us(sheets: dict[str, pd.DataFrame]) -> bytes:
+    # Auto-fit the rest (starting from column B)
+    for col_idx in range(2, ws.max_column + 1):
+        col_letter = get_column_letter(col_idx)
+
+        max_len = 0
+        for cell in ws[col_letter]:
+            if cell.value is not None:
+                max_len = max(max_len, len(str(cell.value).strip()))
+
+        # tighter sizing rule than max_len + 2
+        # (names won't explode width)
+        if max_len <= 10:
+            width = max_len + 2
+        elif max_len <= 25:
+            width = max_len * 0.9
+        else:
+            width = max_len * 0.75
+
+        ws.column_dimensions[col_letter].width = max(10, min(width, 35))
+
+def build_styled_workbook(sheets: dict[str, pd.DataFrame]) -> bytes:
     wb = Workbook()
     default = wb.active
     wb.remove(default)
@@ -95,7 +118,8 @@ def build_styled_workbook_exact_like_us(sheets: dict[str, pd.DataFrame]) -> byte
         for row in dataframe_to_rows(df, index=False, header=True):
             ws.append(row)
 
-        style_worksheet_exact_like_us(ws)
+        apply_us_style(ws)
+        set_column_widths(ws, df)
 
     buf = BytesIO()
     wb.save(buf)
@@ -150,7 +174,7 @@ if file_a and file_b:
         f"New in Excel B: {len(new_rows_b_out)} | Removed from Excel A: {len(removed_rows_a_out)}"
     )
 
-    # Preview (same column widths + hide index)
+    # Preview (hide index + consistent widths)
     st.subheader("3) Results (Preview)")
     column_cfg = {
         SERIAL_COL: st.column_config.NumberColumn(SERIAL_COL, width="small"),
@@ -182,9 +206,9 @@ if file_a and file_b:
         else:
             st.info("No names removed from Excel A.")
 
-    # Download (EXACT same styling as US Cleaner)
+    # Download
     st.subheader("4) Download results")
-    out_bytes = build_styled_workbook_exact_like_us({
+    out_bytes = build_styled_workbook({
         "New_in_Excel_B": new_rows_b_out,
         "Removed_from_Excel_A": removed_rows_a_out,
     })
