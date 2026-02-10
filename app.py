@@ -177,10 +177,10 @@ if file_a and file_b:
     # KPIs (more professional than plain text)
     st.subheader("3) Summary")
     k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Baseline rows (A)", f"{len(df_a):,}")
-    k2.metric("Current rows (B)", f"{len(df_b):,}")
-    k3.metric("New in B", f"{len(new_out):,}")
-    k4.metric("Removed from A", f"{len(removed_out):,}")
+    k1.metric("Baseline Counts (A)", f"{len(df_a):,}")
+    k2.metric("Current Counts (B)", f"{len(df_b):,}")
+    k3.metric("New Personnel(s) in B", f"{len(new_out):,}")
+    k4.metric("Removed Personnel(s) from A", f"{len(removed_out):,}")
 
     # Results Preview
     with st.container(border=True):
