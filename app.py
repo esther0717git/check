@@ -120,9 +120,9 @@ def build_workbook(sheets: dict[str, pd.DataFrame]) -> bytes:
 with st.expander("How it works", expanded=False):
     st.markdown(
         """
-        - **Excel A (Baseline):** your previous / approved roster  
-        - **Excel B (Current):** latest roster to compare  
-        - We compare using **Full Name As Per NRIC** (trimmed, uppercased, extra spaces removed).
+        - **Excel A (Baseline):** your previous roster  
+        - **Excel B (Current):** current roster to compare  
+        - We compare using **Full Name As Per NRIC**
         - Output includes:
           - **New in Excel B**
           - **Removed from Excel A**
@@ -226,9 +226,9 @@ if file_a and file_b:
         })
 
         st.download_button(
-            "📥 Download Delta Report (Styled XLSX)",
+            "📥 Download Results (Styled XLSX)",
             data=output,
-            file_name="clearid_compare_delta.xlsx",
+            file_name="clearid_compare.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             type="primary",
             use_container_width=True,
